@@ -1,0 +1,20 @@
+/* Custom styles for carousel indicators */
+.carousel-indicators {
+    bottom: 10px; /* Adjust position if needed */
+  }
+  
+  .carousel-indicators li {
+    width: 12px; /* Size of the dots */
+    height: 12px; /* Size of the dots */
+    background-color: #ffffff; /* Color of the dots */
+    border-radius: 50%; /* Make the dots circular */
+    border: 1px solid #000; /* Optional: Border around the dots */
+  }
+
+  .carousel-indicators li::marker {
+    color: transparent;
+  }
+  
+  .carousel-indicators .active {
+    background-color: #000000; /* Color of the active dot */
+  }

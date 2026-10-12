@@ -1,0 +1,1980 @@
+SENIOR FRONTEND DEVELOPER - SECURITY INTERVIEW Q&A
+===================================================
+
+60 QUESTIONS WITH ANSWERS + FOLLOW-UP QUESTIONS
+
+
+===================================================
+SECTION 1 - XSS AND BROWSER ATTACKS
+===================================================
+
+
+1. WHAT IS XSS?
+
+Answer:
+XSS stands for Cross-Site Scripting. It happens when an attacker manages to put
+malicious JavaScript or HTML into a web page and that code gets executed in
+another user's browser.
+
+For example, imagine an application displays a user's comment like this:
+
+    element.innerHTML = comment;
+
+If the comment contains malicious HTML, the browser may interpret it as code
+instead of normal text.
+
+A safer approach is to let the framework escape the content or use APIs such
+as textContent when HTML is not required.
+
+There are three common types:
+
+1. Stored XSS:
+   The malicious content is stored in a database and shown to other users.
+
+2. Reflected XSS:
+   The malicious content comes from a request, such as a URL parameter, and
+   is immediately reflected into the page.
+
+3. DOM-based XSS:
+   The vulnerability happens entirely in client-side JavaScript when
+   untrusted data is inserted into a dangerous DOM API.
+
+Follow-up:
+Does HttpOnly completely protect us from XSS?
+
+Answer:
+No. HttpOnly prevents JavaScript from reading the cookie, but an XSS attacker
+can still execute JavaScript as the victim and potentially make authenticated
+requests, read information displayed on the page, modify the UI, or perform
+actions as the user.
+
+
+---------------------------------------------------
+
+2. HOW DO YOU PREVENT XSS?
+
+Answer:
+I use multiple layers of protection rather than relying on one technique.
+
+First, I use the framework's normal escaping behavior. For example, React
+escapes values rendered normally through JSX.
+
+Second, I avoid dangerous DOM APIs such as innerHTML when they are not needed.
+
+If the application genuinely needs to render HTML supplied by a user or CMS,
+I sanitize that HTML using an appropriate HTML sanitizer.
+
+I also use Content Security Policy as defense in depth.
+
+For larger applications, Trusted Types can provide additional protection
+against DOM-based XSS.
+
+Follow-up:
+Is input validation enough to prevent XSS?
+
+Answer:
+No. Input validation is useful, but it should not be the only defense.
+
+A value that is considered safe in one context may not be safe in another.
+That's why output encoding, safe DOM APIs, sanitization where necessary, and
+CSP are also important.
+
+
+---------------------------------------------------
+
+3. WHY IS INNERHTML DANGEROUS?
+
+Answer:
+innerHTML tells the browser to interpret a string as HTML.
+
+For example:
+
+    element.innerHTML = userInput;
+
+If userInput is controlled by an attacker, they may be able to inject HTML
+or executable content.
+
+If I only need to display text, I would use:
+
+    element.textContent = userInput;
+
+textContent treats the value as text instead of parsing it as HTML.
+
+Follow-up:
+Is innerHTML always dangerous?
+
+Answer:
+No. The API itself is not automatically a vulnerability.
+
+The problem is putting untrusted content into an HTML context without proper
+sanitization or encoding.
+
+If the content is trusted or properly sanitized, there can be legitimate
+use cases.
+
+
+---------------------------------------------------
+
+4. WHAT IS CSRF?
+
+Answer:
+CSRF stands for Cross-Site Request Forgery.
+
+It happens when an attacker tricks a user's browser into sending a request to
+a website where the user is already authenticated.
+
+For example:
+
+1. The user logs into bank.example.com.
+2. The browser has an authentication cookie.
+3. The user visits an attacker's website.
+4. The attacker's website causes the browser to send a request to the bank.
+5. The browser may automatically attach the bank's authentication cookie.
+6. If the bank does not have CSRF protection, the request may be treated as
+   an authenticated request.
+
+Common defenses include:
+
+- SameSite cookies
+- CSRF tokens
+- Appropriate Origin/Referer validation
+- Correct HTTP methods
+- Avoiding state-changing GET requests
+
+Follow-up:
+Does CORS prevent CSRF?
+
+Answer:
+No. CORS and CSRF solve different problems.
+
+CORS controls whether browser JavaScript can read cross-origin responses.
+
+CSRF is about an attacker causing an authenticated request to happen.
+
+SameSite cookies and CSRF tokens are common CSRF defenses.
+
+
+---------------------------------------------------
+
+5. CAN CSRF HAPPEN WITH JWT?
+
+Answer:
+It depends on where the JWT is stored and how it is sent.
+
+If the JWT is stored in an HttpOnly cookie, the browser automatically sends the
+cookie with matching requests. Therefore CSRF can still be a concern.
+
+If the JWT is stored somewhere that JavaScript reads and the application
+manually sends:
+
+    Authorization: Bearer <token>
+
+then classic cookie-based CSRF is generally not applicable because another
+website cannot normally make the browser automatically add that Authorization
+header.
+
+However, storing tokens where JavaScript can access them introduces a larger
+XSS/token-theft concern.
+
+Follow-up:
+Which is better, cookies or localStorage?
+
+Answer:
+There is no universal answer. It depends on the application's threat model.
+
+HttpOnly cookies protect the credential from direct JavaScript access but
+require consideration of CSRF.
+
+localStorage is easy to use, but JavaScript can read it, so an XSS vulnerability
+can potentially expose the token.
+
+For sensitive applications, I would carefully evaluate cookie-based sessions
+with Secure, HttpOnly, and appropriate SameSite settings.
+
+
+---------------------------------------------------
+
+6. WHAT IS CLICKJACKING?
+
+Answer:
+Clickjacking is an attack where an attacker places your website inside an
+iframe and tricks the user into clicking something different from what they
+think they are clicking.
+
+For example, an attacker might visually place a fake button over a real
+"Delete Account" button.
+
+A common defense is:
+
+    Content-Security-Policy: frame-ancestors 'none'
+
+If the application needs to be embedded, we can allow only trusted origins.
+
+Follow-up:
+What older header can also help?
+
+Answer:
+X-Frame-Options can provide frame protection, for example:
+
+    X-Frame-Options: DENY
+
+CSP frame-ancestors is generally the more flexible modern mechanism.
+
+
+---------------------------------------------------
+
+7. WHAT IS AN OPEN REDIRECT?
+
+Answer:
+An open redirect occurs when an application redirects users to a URL that
+an attacker can control.
+
+For example:
+
+    /redirect?url=https://evil.com
+
+If the application blindly redirects there, an attacker can send a victim a
+URL that starts with the trusted company domain but eventually sends the user
+to a malicious website.
+
+This can be useful in phishing attacks.
+
+The solution is to allowlist valid destinations or validate that the target
+belongs to a trusted origin.
+
+Follow-up:
+Why is this dangerous if the attacker eventually sends the user to another
+website?
+
+Answer:
+Because users may trust the original domain.
+
+An attacker can create a link such as:
+
+    trusted-company.com/redirect?url=evil.com
+
+The victim may initially trust trusted-company.com and not realize they will
+be redirected elsewhere.
+
+
+---------------------------------------------------
+
+8. WHAT IS PROTOTYPE POLLUTION?
+
+Answer:
+Prototype pollution is a JavaScript vulnerability where attacker-controlled
+input modifies an object's prototype.
+
+JavaScript objects can inherit properties from prototypes. If an attacker
+can manipulate those prototypes, they may influence the behavior of many
+objects in the application.
+
+This often happens through unsafe object merging or vulnerable dependencies.
+
+Protection includes:
+
+- Keeping dependencies updated
+- Validating object keys
+- Avoiding unsafe object merging
+- Being careful with __proto__, constructor, and prototype
+- Using security scanning tools
+
+Follow-up:
+Is prototype pollution only a backend problem?
+
+Answer:
+No. JavaScript runs on both the frontend and backend, so vulnerable frontend
+dependencies or client-side object manipulation can also create risk.
+
+
+===================================================
+SECTION 2 - CORS AND SAME-ORIGIN SECURITY
+===================================================
+
+
+9. WHAT IS CORS?
+
+Answer:
+CORS stands for Cross-Origin Resource Sharing.
+
+It is a browser security mechanism that controls whether JavaScript running
+on one origin can read responses from another origin.
+
+For example:
+
+    Frontend:
+    https://app.example.com
+
+    API:
+    https://api.example.com
+
+These are different origins because the hosts are different.
+
+The API can return:
+
+    Access-Control-Allow-Origin:
+    https://app.example.com
+
+This tells the browser that JavaScript from that origin is allowed to read
+the response.
+
+Important:
+CORS is NOT authentication and NOT authorization.
+
+Follow-up:
+Does CORS prevent attackers from calling my API?
+
+Answer:
+No.
+
+An attacker can use curl, Postman, a backend server, or another HTTP client.
+
+The API must still authenticate the caller and verify authorization.
+
+
+---------------------------------------------------
+
+10. WHAT IS THE SAME-ORIGIN POLICY?
+
+Answer:
+Same-Origin Policy is a browser security mechanism that prevents JavaScript
+from one origin from freely reading protected resources from another origin.
+
+An origin is made from:
+
+    scheme + host + port
+
+For example:
+
+    https://example.com:443
+
+is an origin.
+
+If the frontend is:
+
+    https://app.example.com
+
+and the API is:
+
+    https://api.example.com
+
+they are different origins.
+
+CORS provides controlled exceptions to the browser's same-origin restrictions.
+
+Follow-up:
+Are these the same origin?
+
+    https://example.com
+    http://example.com
+
+Answer:
+No.
+
+The scheme is different: HTTPS versus HTTP.
+
+
+---------------------------------------------------
+
+11. WHAT IS A CORS PREFLIGHT REQUEST?
+
+Answer:
+A preflight is an OPTIONS request that the browser sends before certain
+cross-origin requests.
+
+The browser is essentially asking the server:
+
+"Am I allowed to make this request from this origin using this method and
+these headers?"
+
+For example:
+
+    OPTIONS /api/users
+
+The server might respond with:
+
+    Access-Control-Allow-Origin: https://app.example.com
+    Access-Control-Allow-Methods: POST
+    Access-Control-Allow-Headers: Authorization, Content-Type
+
+If the browser accepts the response, it can then send the actual request.
+
+Follow-up:
+Does every cross-origin request cause a preflight?
+
+Answer:
+No.
+
+Some requests qualify as simple requests and do not require a preflight.
+
+Requests using certain custom headers, HTTP methods, or content types commonly
+trigger preflight.
+
+
+---------------------------------------------------
+
+12. WHY CAN'T WE USE CORS WILDCARD WITH CREDENTIALS?
+
+Answer:
+This combination is not allowed:
+
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Credentials: true
+
+When credentials such as cookies are involved, the server must explicitly
+identify the allowed origin.
+
+For example:
+
+    Access-Control-Allow-Origin: https://app.example.com
+    Access-Control-Allow-Credentials: true
+
+This prevents a server from broadly allowing credentialed responses to every
+origin.
+
+Follow-up:
+Is Access-Control-Allow-Origin: * always insecure?
+
+Answer:
+No.
+
+For a public API or public static resources that contain no sensitive data,
+wildcard access can be perfectly appropriate.
+
+The problem is using it for sensitive authenticated data.
+
+
+---------------------------------------------------
+
+13. WHAT IS THE DIFFERENCE BETWEEN SAME-SITE AND SAME-ORIGIN?
+
+Answer:
+They are related but different concepts.
+
+Same-origin is based on:
+
+    scheme + host + port
+
+Same-site is a broader browser concept related mainly to the site's registrable
+domain and scheme.
+
+This distinction matters when discussing cookies and SameSite.
+
+For example:
+
+    app.example.com
+    api.example.com
+
+are different origins but can be considered same-site.
+
+Follow-up:
+Why does this distinction matter?
+
+Answer:
+Because developers often assume that if two URLs are "the same site" they
+are automatically same-origin. That is not true.
+
+Browser security features use these concepts differently.
+
+
+===================================================
+SECTION 3 - AUTHENTICATION AND COOKIES
+===================================================
+
+
+14. WHAT IS AUTHENTICATION?
+
+Answer:
+Authentication answers:
+
+    "Who are you?"
+
+For example, a user enters a username and password and the server verifies
+their identity.
+
+After successful authentication, the server may create a session or issue
+tokens that represent the authenticated user.
+
+Follow-up:
+What is authorization?
+
+Answer:
+Authorization answers:
+
+    "What are you allowed to do?"
+
+Authentication identifies the user.
+
+Authorization determines what that user can access or modify.
+
+
+---------------------------------------------------
+
+15. WHAT IS AUTHORIZATION?
+
+Answer:
+Authorization is the process of determining whether an authenticated user is
+allowed to perform a specific action.
+
+For example:
+
+    User A is authenticated.
+
+But User A may not be allowed to:
+
+    DELETE /api/users/123
+
+if User A is not an administrator or does not own that resource.
+
+Authorization must be enforced by the backend.
+
+Follow-up:
+Can I hide the Delete button for normal users?
+
+Answer:
+Yes, for user experience.
+
+But that is not a security control.
+
+A malicious user can manually call the API, so the backend must still check
+the user's permissions.
+
+
+---------------------------------------------------
+
+16. WHAT IS RBAC?
+
+Answer:
+RBAC stands for Role-Based Access Control.
+
+Users are assigned roles, and roles have permissions.
+
+Example:
+
+    Admin:
+        create users
+        delete users
+        manage settings
+
+    Editor:
+        create content
+        edit content
+
+    Viewer:
+        read content
+
+The backend checks whether the user's role has permission for the requested
+operation.
+
+Follow-up:
+Is RBAC enough for every application?
+
+Answer:
+No.
+
+Some systems need more detailed rules based on resource ownership,
+organization, location, or other attributes.
+
+
+---------------------------------------------------
+
+17. WHAT IS ABAC?
+
+Answer:
+ABAC stands for Attribute-Based Access Control.
+
+Instead of only checking a role, the system evaluates attributes.
+
+For example:
+
+    User belongs to organization A
+    AND
+    Document belongs to organization A
+    AND
+    User has edit permission
+
+then editing is allowed.
+
+ABAC is useful when authorization rules become more complex than simple
+roles.
+
+Follow-up:
+Give an example where ABAC is better than RBAC.
+
+Answer:
+Imagine an application where an employee can edit documents only if:
+
+    They belong to the same organization
+    AND
+    They own the document
+    AND
+    The document is not locked
+
+Those rules are easier to express using attributes.
+
+
+---------------------------------------------------
+
+18. WHAT IS AN HTTPONLY COOKIE?
+
+Answer:
+An HttpOnly cookie cannot be read by JavaScript through document.cookie.
+
+For example:
+
+    Set-Cookie:
+    session=abc123;
+    HttpOnly;
+    Secure;
+    SameSite=Lax
+
+The browser still sends the cookie to matching requests.
+
+HttpOnly is useful for authentication cookies because it reduces the ability
+of XSS to directly steal the session cookie.
+
+Follow-up:
+Does HttpOnly stop the browser from sending the cookie?
+
+Answer:
+No.
+
+It only prevents JavaScript from reading it.
+
+
+---------------------------------------------------
+
+19. WHAT DOES SECURE MEAN ON A COOKIE?
+
+Answer:
+The Secure attribute tells the browser to send the cookie only over HTTPS
+connections, subject to browser behavior for local development.
+
+This helps prevent the cookie from being transmitted over an unencrypted
+HTTP connection.
+
+Follow-up:
+Does Secure prevent XSS?
+
+Answer:
+No.
+
+It protects the cookie during transport.
+
+It does not prevent malicious JavaScript from executing in the application.
+
+
+---------------------------------------------------
+
+20. WHAT DOES SAMESITE DO?
+
+Answer:
+SameSite controls when a browser sends a cookie in cross-site situations.
+
+Common values are:
+
+    Strict
+    Lax
+    None
+
+Strict is the most restrictive.
+
+Lax allows some cross-site navigation behavior and is a common default.
+
+None allows cross-site cookie usage but requires Secure.
+
+SameSite is an important defense against CSRF.
+
+Follow-up:
+Can SameSite completely eliminate CSRF?
+
+Answer:
+It significantly reduces certain CSRF attacks, but I would not assume it
+eliminates every possible CSRF scenario.
+
+The correct approach depends on the authentication architecture and request
+patterns.
+
+
+---------------------------------------------------
+
+21. LOCALSTORAGE VS HTTPONLY COOKIE - WHICH IS BETTER?
+
+Answer:
+They have different security properties.
+
+localStorage can be read by JavaScript:
+
+    localStorage.getItem("token")
+
+So if the application has an XSS vulnerability, an attacker may be able to
+steal the token.
+
+An HttpOnly cookie cannot be read by JavaScript, which protects the credential
+from direct cookie access.
+
+However, cookies are automatically sent with requests, so CSRF needs to be
+considered.
+
+For a security-sensitive application, I would usually prefer a well-designed
+server session or protected cookie-based authentication rather than choosing
+localStorage simply because it is convenient.
+
+Follow-up:
+Is localStorage inherently insecure?
+
+Answer:
+No.
+
+It is not automatically a vulnerability.
+
+The important question is what is stored there and what threats the
+application needs to defend against.
+
+
+---------------------------------------------------
+
+22. WHAT IS SESSION HIJACKING?
+
+Answer:
+Session hijacking occurs when an attacker obtains a valid session credential
+and uses it to impersonate the user.
+
+Possible causes include:
+
+- Token theft
+- XSS
+- Insecure HTTP
+- Malware
+- Leaked credentials
+- Poor session management
+
+Defenses include HTTPS, Secure cookies, HttpOnly cookies, session expiration,
+token rotation, and monitoring.
+
+Follow-up:
+What happens if an attacker steals a valid session cookie?
+
+Answer:
+The attacker may be able to act as that user until the session expires or is
+revoked.
+
+This is why session credentials must be treated like passwords.
+
+
+---------------------------------------------------
+
+23. WHAT IS SESSION FIXATION?
+
+Answer:
+Session fixation occurs when an attacker gets a victim to use a session ID
+that the attacker already knows.
+
+After successful authentication, the server should generate a new session ID.
+
+This prevents an attacker from knowing the authenticated session identifier.
+
+Follow-up:
+When should the session ID be regenerated?
+
+Answer:
+At important privilege boundaries, especially after login and sometimes after
+privilege changes.
+
+
+===================================================
+SECTION 4 - JWT AND OAUTH
+===================================================
+
+
+24. WHAT IS JWT?
+
+Answer:
+JWT stands for JSON Web Token.
+
+A JWT commonly contains:
+
+    Header
+    Payload
+    Signature
+
+The payload contains claims such as:
+
+    user ID
+    expiration time
+    issuer
+
+The signature allows the server to verify that the token was created by a
+trusted issuer and has not been modified.
+
+Important:
+JWT is usually encoded and signed, not encrypted.
+
+Follow-up:
+Can users read a JWT?
+
+Answer:
+Usually yes.
+
+The payload is generally Base64URL encoded, so anyone who has the token can
+decode its payload.
+
+Therefore sensitive secrets should not be placed inside a normal JWT payload.
+
+
+---------------------------------------------------
+
+25. WHAT IS A REFRESH TOKEN?
+
+Answer:
+An access token is normally short-lived and is used to access APIs.
+
+A refresh token is used to obtain a new access token after the access token
+expires.
+
+Example:
+
+    Access token:
+        expires in 10 minutes
+
+    Refresh token:
+        lives longer
+
+If the access token is stolen, the attack window is shorter.
+
+Refresh tokens need stronger protection because they usually live longer.
+
+Follow-up:
+Why not just make the access token valid for 30 days?
+
+Answer:
+A stolen 30-day access token gives an attacker a much larger window of time
+to impersonate the user.
+
+Short-lived access tokens reduce that window.
+
+
+---------------------------------------------------
+
+26. WHAT IS TOKEN ROTATION?
+
+Answer:
+Token rotation means replacing an old token with a new token during refresh
+or other security-sensitive operations.
+
+For example:
+
+    Refresh token A
+        ->
+    Refresh token B
+
+If an old refresh token is reused after rotation, the server can potentially
+detect token theft.
+
+Follow-up:
+What problem does rotation help solve?
+
+Answer:
+It reduces the value of a stolen long-lived refresh token and can help detect
+replay attacks.
+
+
+---------------------------------------------------
+
+27. WHAT IS OAUTH?
+
+Answer:
+OAuth is an authorization framework that allows an application to obtain
+limited access to resources without asking the user for their password.
+
+For example:
+
+    Your application
+        ->
+    Google authorization
+        ->
+    User grants permission
+        ->
+    Your application receives authorization information
+
+OAuth is about delegated authorization.
+
+Follow-up:
+Is OAuth the same as authentication?
+
+Answer:
+Not exactly.
+
+OAuth is primarily an authorization framework.
+
+OpenID Connect builds an authentication/identity layer on top of OAuth 2.0.
+
+
+---------------------------------------------------
+
+28. WHAT IS OPENID CONNECT?
+
+Answer:
+OpenID Connect, or OIDC, is an identity layer built on OAuth 2.0.
+
+OAuth answers:
+
+    "What access has been granted?"
+
+OIDC adds:
+
+    "Who is the user?"
+
+OIDC provides an ID token containing identity-related claims.
+
+Follow-up:
+Why use OIDC instead of building our own login protocol?
+
+Answer:
+Using a well-established identity protocol reduces the chance of implementing
+authentication incorrectly and allows integration with established identity
+providers.
+
+
+===================================================
+SECTION 5 - AUTHORIZATION ATTACKS
+===================================================
+
+
+29. WHAT IS IDOR OR BOLA?
+
+Answer:
+IDOR means Insecure Direct Object Reference.
+
+BOLA means Broken Object Level Authorization.
+
+Example:
+
+    GET /api/orders/100
+
+The user owns order 100.
+
+They change the URL to:
+
+    GET /api/orders/101
+
+If the API returns another user's order without checking authorization,
+there is a BOLA vulnerability.
+
+The backend must verify that the current user is allowed to access order 101.
+
+Follow-up:
+Can the frontend prevent this?
+
+Answer:
+No.
+
+The frontend can hide data, but an attacker can directly call the API.
+
+The backend must perform the authorization check.
+
+
+---------------------------------------------------
+
+30. WHAT IS PRIVILEGE ESCALATION?
+
+Answer:
+Privilege escalation happens when a user gains permissions they should not
+have.
+
+Example:
+
+A normal user sends:
+
+    PATCH /api/user/profile
+
+with:
+
+    role=admin
+
+If the backend accepts it, the attacker has escalated their privileges.
+
+The backend should only allow authorized administrators or specific internal
+processes to change privileged attributes.
+
+Follow-up:
+Should the frontend prevent users from editing the role field?
+
+Answer:
+Yes, for UX.
+
+But the backend must never trust that restriction.
+
+
+---------------------------------------------------
+
+31. WHAT IS BROKEN ACCESS CONTROL?
+
+Answer:
+Broken access control occurs when the application does not correctly enforce
+who can access a resource or perform an action.
+
+Examples:
+
+- Normal user accessing an admin endpoint
+- User accessing another user's invoice
+- User modifying another organization's data
+- User calling a delete endpoint without permission
+
+This is primarily a server-side security issue.
+
+Follow-up:
+What is the most important rule?
+
+Answer:
+Every sensitive backend operation must verify both:
+
+    Who is the user?
+    Is this user allowed to perform this operation?
+
+
+===================================================
+SECTION 6 - API AND WEB SECURITY
+===================================================
+
+
+32. WHY IS FRONTEND VALIDATION NOT A SECURITY CONTROL?
+
+Answer:
+Because users control the frontend.
+
+An attacker can:
+
+- Modify JavaScript
+- Disable validation
+- Change requests
+- Call APIs directly
+- Use Postman
+- Use curl
+
+For example, the frontend may require:
+
+    age >= 18
+
+But an attacker can bypass the UI and directly send:
+
+    POST /api/register
+
+with a different value.
+
+The server must validate the data independently.
+
+Follow-up:
+Why validate on the frontend at all?
+
+Answer:
+Frontend validation improves user experience and gives immediate feedback.
+
+It reduces unnecessary API requests.
+
+But the backend must repeat the validation because it is the security boundary.
+
+
+---------------------------------------------------
+
+33. WHAT IS RATE LIMITING?
+
+Answer:
+Rate limiting restricts how many requests a client can make within a certain
+period.
+
+For example:
+
+    5 login attempts per minute
+
+This helps defend against:
+
+- Brute-force attacks
+- Credential stuffing
+- API abuse
+- Excessive resource consumption
+
+Rate limiting should generally be enforced server-side.
+
+Follow-up:
+Can the frontend implement rate limiting?
+
+Answer:
+It can slow down the UI, but it cannot enforce security because the attacker
+can bypass the frontend.
+
+The server must enforce it.
+
+
+---------------------------------------------------
+
+34. WHAT IS BRUTE FORCE?
+
+Answer:
+A brute-force attack repeatedly tries possible passwords or credentials until
+one works.
+
+Defenses include:
+
+- Rate limiting
+- Account lockout or progressive delays where appropriate
+- MFA
+- Strong password policies
+- Monitoring
+- Detection of suspicious login patterns
+
+Follow-up:
+What is credential stuffing?
+
+Answer:
+Credential stuffing uses username/password combinations stolen from another
+breach and tries them against your application.
+
+It is different from brute force because the attacker is using known leaked
+credentials rather than guessing random passwords.
+
+
+---------------------------------------------------
+
+35. WHAT IS SSRF?
+
+Answer:
+SSRF stands for Server-Side Request Forgery.
+
+It happens when an attacker controls a URL that the server requests.
+
+For example:
+
+    GET /api/fetch?url=https://attacker-controlled-url
+
+If the server can be tricked into requesting internal services, an attacker
+may reach resources that are not publicly accessible.
+
+Examples of targets could include:
+
+- Internal APIs
+- Cloud metadata services
+- Internal admin tools
+
+Prevent SSRF by validating and allowlisting destinations.
+
+Follow-up:
+Why is SSRF especially relevant to Next.js?
+
+Answer:
+Next.js applications can execute code on the server, including server-side
+fetch requests.
+
+If server-side code fetches a user-controlled URL without validation, SSRF
+can become possible.
+
+
+---------------------------------------------------
+
+36. WHAT IS SQL INJECTION AND DOES A FRONTEND DEVELOPER NEED TO CARE?
+
+Answer:
+SQL injection happens when attacker-controlled input changes the meaning of
+a SQL query.
+
+For example, unsafe string concatenation can allow an attacker to manipulate
+the query.
+
+Frontend developers usually do not write the database queries, but senior
+frontend developers should understand the attack because frontend input
+eventually reaches backend systems.
+
+The backend should use parameterized queries or safe ORM APIs.
+
+Follow-up:
+Does React prevent SQL injection?
+
+Answer:
+No.
+
+React protects certain browser rendering scenarios.
+
+SQL injection is a backend/database security problem.
+
+
+---------------------------------------------------
+
+37. WHAT IS FILE UPLOAD SECURITY?
+
+Answer:
+File uploads are dangerous because users can upload attacker-controlled data.
+
+The backend should validate:
+
+- File size
+- File type
+- File contents
+- Authorization
+- Filename
+- Storage location
+
+The server should not blindly trust:
+
+    filename
+    extension
+    Content-Type
+
+Client-side validation is only for user experience.
+
+Follow-up:
+Why might storing uploads on a separate domain be useful?
+
+Answer:
+It can reduce the risk that uploaded content is treated as content from the
+main application origin.
+
+For example, if an attacker uploads malicious HTML, serving it from a
+separate origin can provide additional isolation.
+
+
+===================================================
+SECTION 7 - CSP, HEADERS, AND SUPPLY CHAIN
+===================================================
+
+
+38. WHAT IS CONTENT SECURITY POLICY?
+
+Answer:
+Content Security Policy, or CSP, is a browser security policy that controls
+what types of resources a page is allowed to load or execute.
+
+For example, a policy might restrict scripts to trusted sources.
+
+CSP is particularly useful as defense in depth against XSS.
+
+Follow-up:
+Does CSP replace XSS prevention?
+
+Answer:
+No.
+
+CSP is another security layer.
+
+We should still use safe rendering, sanitization where required, secure
+framework practices, and avoid dangerous DOM APIs.
+
+
+---------------------------------------------------
+
+39. WHAT IS SUBRESOURCE INTEGRITY?
+
+Answer:
+Subresource Integrity, or SRI, allows the browser to verify that a downloaded
+script or stylesheet matches an expected cryptographic hash.
+
+Conceptually:
+
+    <script
+      src="https://cdn.example.com/app.js"
+      integrity="sha384-..."
+    >
+
+If the downloaded file does not match the expected hash, the browser can
+refuse to execute it.
+
+This helps protect against a compromised CDN or modified third-party file.
+
+Follow-up:
+Can SRI protect dynamically changing scripts?
+
+Answer:
+It works best for resources whose content is expected to remain fixed.
+
+If the resource changes, the integrity hash must also change.
+
+
+---------------------------------------------------
+
+40. WHAT IS A SUPPLY-CHAIN ATTACK?
+
+Answer:
+A supply-chain attack happens when something your application trusts is
+compromised.
+
+For frontend applications, this can include:
+
+- npm packages
+- third-party JavaScript
+- CDN libraries
+- Build tools
+- CI/CD dependencies
+
+If a malicious package gets included in the application, its code may execute
+with the application's privileges.
+
+Defenses include dependency scanning, lockfiles, package review, updates,
+minimal dependencies, and monitoring.
+
+Follow-up:
+Why are frontend supply-chain attacks particularly dangerous?
+
+Answer:
+Because malicious JavaScript shipped to the browser can potentially execute
+in every user's browser and access data available to the application.
+
+
+---------------------------------------------------
+
+41. WHAT SECURITY HEADERS SHOULD A FRONTEND DEVELOPER KNOW?
+
+Answer:
+Important headers include:
+
+    Content-Security-Policy
+    Strict-Transport-Security
+    X-Content-Type-Options
+    Referrer-Policy
+    Permissions-Policy
+
+CSP controls content/resource execution.
+
+HSTS forces HTTPS for future requests.
+
+X-Content-Type-Options helps prevent MIME sniffing.
+
+Referrer-Policy controls how much referrer information is sent.
+
+Permissions-Policy controls access to certain browser capabilities.
+
+Follow-up:
+Does adding security headers automatically make an application secure?
+
+Answer:
+No.
+
+Security headers are defense in depth.
+
+They cannot compensate for broken authentication, authorization, XSS,
+insecure APIs, or exposed secrets.
+
+
+===================================================
+SECTION 8 - NEXT.JS SECURITY
+===================================================
+
+
+42. WHAT IS THE DIFFERENCE BETWEEN SERVER COMPONENTS AND CLIENT COMPONENTS
+IN NEXT.JS FROM A SECURITY PERSPECTIVE?
+
+Answer:
+Server Components execute on the server.
+
+Client Components execute in the browser.
+
+Server Components can access server-side resources that should never be
+exposed to the browser, such as private environment variables or server-side
+credentials.
+
+Client Components are shipped to the browser, so anything inside them should
+be considered visible to the user.
+
+The important rule is:
+
+    Never put secrets in Client Components.
+
+Follow-up:
+Can Server Components safely access database credentials?
+
+Answer:
+They can access server-side secrets if the secrets stay on the server and
+are not accidentally passed to the client or rendered into the response.
+
+
+---------------------------------------------------
+
+43. WHAT IS NEXT_PUBLIC_ IN NEXT.JS?
+
+Answer:
+Next.js uses the NEXT_PUBLIC_ prefix for environment variables that are
+intended to be exposed to client-side JavaScript.
+
+For example:
+
+    NEXT_PUBLIC_API_URL=https://api.example.com
+
+can be included in browser code.
+
+You should NOT put secrets in NEXT_PUBLIC_ variables.
+
+Bad:
+
+    NEXT_PUBLIC_DATABASE_PASSWORD=secret
+
+The value can become part of the client-side application.
+
+Follow-up:
+Can a normal environment variable accidentally become public?
+
+Answer:
+Yes, if its value is passed into Client Components, returned from an API,
+rendered into HTML, or otherwise exposed by application code.
+
+Keeping a variable without NEXT_PUBLIC_ is not a guarantee if you manually
+send the value to the client.
+
+
+---------------------------------------------------
+
+44. CAN YOU PUT AN API SECRET IN NEXT.JS FRONTEND CODE?
+
+Answer:
+No.
+
+Anything delivered to the browser can be inspected.
+
+For example:
+
+    const API_SECRET = "123456";
+
+is not secret if it is included in a client-side bundle.
+
+Instead, the frontend should call a server-side endpoint, and the server can
+use the secret to communicate with the protected service.
+
+Follow-up:
+What about environment variables?
+
+Answer:
+Environment variables are only secret if they remain server-side.
+
+Once their values are bundled into browser JavaScript, they are no longer
+secret.
+
+
+---------------------------------------------------
+
+45. HOW DO YOU PROTECT NEXT.JS API ROUTES?
+
+Answer:
+Every protected API route should independently perform security checks.
+
+A good pattern is:
+
+    1. Authenticate the request.
+    2. Validate the input.
+    3. Authorize the requested operation.
+    4. Perform the operation.
+    5. Return only data the user is allowed to see.
+
+For example, checking authentication in the frontend is not enough.
+
+The API route itself must verify the current session/user.
+
+Follow-up:
+Can middleware replace authorization inside API routes?
+
+Answer:
+No.
+
+Middleware can provide useful early checks, but the actual server-side
+operation should enforce authorization.
+
+
+---------------------------------------------------
+
+46. IS NEXT.JS MIDDLEWARE A SECURITY BOUNDARY?
+
+Answer:
+Middleware can be part of a security architecture, but I would not make it
+the only authorization boundary.
+
+For example, middleware can redirect unauthenticated users away from:
+
+    /admin
+
+But an attacker may call:
+
+    /api/admin/delete-user
+
+directly.
+
+The API or server-side operation must independently check authentication and
+authorization.
+
+Follow-up:
+What is middleware good for?
+
+Answer:
+It is useful for:
+
+- Early authentication checks
+- Redirects
+- Request filtering
+- Headers
+- Routing logic
+- Some coarse-grained access control
+
+But resource-level authorization still belongs at the server operation that
+actually accesses or modifies the resource.
+
+
+---------------------------------------------------
+
+47. HOW DO YOU PREVENT XSS IN NEXT.JS?
+
+Answer:
+Next.js uses React, and normal React rendering escapes values by default.
+
+For example:
+
+    <div>{userComment}</div>
+
+is generally safer than manually inserting HTML.
+
+The main danger is bypassing that protection.
+
+For example:
+
+    dangerouslySetInnerHTML
+
+should only be used when necessary and with properly sanitized content.
+
+I would also use CSP as defense in depth.
+
+Follow-up:
+Is dangerouslySetInnerHTML always a vulnerability?
+
+Answer:
+No.
+
+The vulnerability depends on where the HTML comes from.
+
+If the HTML is trusted or properly sanitized, it can be a legitimate feature.
+
+
+---------------------------------------------------
+
+48. HOW DO YOU PROTECT NEXT.JS SERVER ACTIONS?
+
+Answer:
+Server Actions execute on the server, but they are still application entry
+points.
+
+I should treat their inputs as untrusted.
+
+A Server Action should:
+
+    1. Authenticate the user.
+    2. Validate input.
+    3. Check authorization.
+    4. Perform the operation.
+    5. Return only safe data.
+
+For example, this is dangerous:
+
+    deleteUser(userId)
+
+if it does not verify whether the current user is allowed to delete that
+user.
+
+Follow-up:
+Are Server Actions automatically secure because they run on the server?
+
+Answer:
+No.
+
+Running on the server prevents browser exposure of the implementation, but
+the action itself still needs authentication, authorization, validation, and
+other security controls.
+
+
+---------------------------------------------------
+
+49. HOW DO YOU HANDLE AUTHENTICATION IN NEXT.JS?
+
+Answer:
+I would centralize authentication rather than implementing it independently
+in every page.
+
+The application should have a clear server-side source of truth for the
+current user/session.
+
+Protected server operations should verify the session before accessing
+sensitive resources.
+
+For cookie-based sessions, I would use appropriate cookie settings such as:
+
+    HttpOnly
+    Secure
+    SameSite
+
+I would also handle expiration, logout, session rotation, and CSRF where
+appropriate.
+
+Follow-up:
+Can I just check the user in React context?
+
+Answer:
+No.
+
+React context is client-side application state.
+
+It can be used to display the user's state, but it cannot be trusted for
+security decisions.
+
+
+---------------------------------------------------
+
+50. HOW DO YOU PROTECT NEXT.JS AGAINST SSRF?
+
+Answer:
+SSRF becomes possible when server-side code makes requests to URLs controlled
+by users.
+
+For example:
+
+    /api/proxy?url=https://some-url.com
+
+If the server blindly fetches the URL, an attacker might attempt to access
+internal services.
+
+I would:
+
+- Avoid arbitrary URL fetching when possible.
+- Use an allowlist.
+- Validate hostname and protocol.
+- Block internal/private destinations where appropriate.
+- Carefully handle redirects.
+- Apply network-level controls.
+
+Follow-up:
+Why isn't frontend URL validation enough?
+
+Answer:
+Because the attacker can call the server endpoint directly and bypass the
+frontend entirely.
+
+
+---------------------------------------------------
+
+51. HOW DO YOU SECURE REDIRECTS IN NEXT.JS?
+
+Answer:
+Never blindly trust a user-provided redirect URL.
+
+For example:
+
+    /login?redirect=https://evil.com
+
+could become an open redirect.
+
+I would prefer internal relative paths or validate the destination against an
+allowlist of trusted origins.
+
+Follow-up:
+What's a safe approach for an internal redirect?
+
+Answer:
+Validate that the path is local to the application rather than accepting an
+arbitrary absolute URL.
+
+
+---------------------------------------------------
+
+52. HOW DO YOU SECURE FILE UPLOADS IN A NEXT.JS APPLICATION?
+
+Answer:
+The server must treat uploaded files as untrusted.
+
+I would validate:
+
+- User authorization
+- File size
+- File type
+- Actual file content
+- Filename
+- Storage location
+
+I would not trust only the browser-provided Content-Type.
+
+Depending on the application, files may also need malware scanning.
+
+Follow-up:
+Should I validate files in React?
+
+Answer:
+Yes, for user experience.
+
+But the server must validate again because the browser can be bypassed.
+
+
+---------------------------------------------------
+
+53. HOW DO YOU PREVENT SENSITIVE DATA FROM BEING EXPOSED IN NEXT.JS?
+
+Answer:
+I would check several places:
+
+- Environment variables
+- Client Components
+- API responses
+- Server Component props
+- Logs
+- Error messages
+- Source maps
+- Browser storage
+- Analytics
+- URLs
+
+A common mistake is reading a server secret and passing it as a prop to a
+Client Component.
+
+Once it reaches the client, it is no longer secret.
+
+Follow-up:
+Can source maps expose secrets?
+
+Answer:
+They can expose source code and implementation details.
+
+Secrets should never be present in source code in the first place.
+
+
+---------------------------------------------------
+
+54. HOW DO YOU SECURE NEXT.JS CACHING?
+
+Answer:
+I need to be careful when caching responses containing user-specific or
+sensitive information.
+
+If a response depends on the authenticated user, I need to ensure it cannot
+be incorrectly reused for another user.
+
+I would review:
+
+- Server caching
+- Route caching
+- Fetch caching
+- CDN caching
+- Cache-Control headers
+- Personalized responses
+
+Follow-up:
+What's the biggest risk?
+
+Answer:
+Accidentally serving one user's private data to another user because a
+personalized response was cached as if it were public.
+
+
+---------------------------------------------------
+
+55. HOW DO YOU SECURE postMessage?
+
+Answer:
+postMessage allows communication between browser windows, tabs, and iframes.
+
+The receiver should not blindly trust messages.
+
+I should validate:
+
+    event.origin
+    event.source
+    event.data
+
+For example:
+
+    if (event.origin !== "https://trusted.example.com") {
+        return;
+    }
+
+I would also validate the structure and allowed actions in event.data.
+
+Follow-up:
+Is using "*" in postMessage safe?
+
+Answer:
+Using "*" as the target origin removes origin restriction for the outgoing
+message.
+
+For sensitive communication, I would specify the exact trusted origin.
+
+
+---------------------------------------------------
+
+56. HOW DO YOU SECURE WEBSOCKETS?
+
+Answer:
+I would use WSS, which is WebSocket over TLS.
+
+I would also authenticate the connection and authorize individual operations.
+
+For example, simply authenticating the WebSocket connection does not mean
+the user can subscribe to every organization's data.
+
+I would validate messages from the client just like normal API input.
+
+Follow-up:
+Can WebSockets have authorization problems?
+
+Answer:
+Yes.
+
+For example, a user could send:
+
+    subscribe organization=ABC
+
+even though they belong to organization XYZ.
+
+The server must verify that the user is allowed to access ABC.
+
+
+===================================================
+SECTION 9 - SENIOR SCENARIO QUESTIONS
+===================================================
+
+
+57. YOU DISCOVER A CRITICAL XSS VULNERABILITY IN PRODUCTION. WHAT DO YOU DO?
+
+Answer:
+I would treat it as a security incident.
+
+First, I would determine:
+
+- Where the vulnerability exists
+- Whether it is exploitable
+- Which users are affected
+- Whether the payload is stored
+- What data the attacker could access
+- Whether there is evidence of exploitation
+
+Then I would:
+
+    1. Contain the vulnerability.
+    2. Deploy a fix or disable the affected feature.
+    3. Investigate potential impact.
+    4. Check logs and monitoring.
+    5. Search the codebase for similar vulnerabilities.
+    6. Add regression tests.
+    7. Improve preventive controls.
+
+Follow-up:
+Would you only fix the vulnerable line?
+
+Answer:
+No.
+
+I would also look for the same insecure pattern elsewhere.
+
+For example, if one unsafe innerHTML usage caused the problem, I would search
+the application for other dangerous DOM sinks.
+
+
+---------------------------------------------------
+
+58. THE BACKEND TEAM SAYS "CORS IS A FRONTEND PROBLEM." WHAT DO YOU SAY?
+
+Answer:
+I would explain that CORS is enforced by the browser, but the server controls
+the CORS response headers.
+
+The frontend can make the request, but the server needs to decide which
+origins, methods, headers, and credentials are allowed.
+
+I would work with the backend team to configure:
+
+    Access-Control-Allow-Origin
+    Access-Control-Allow-Methods
+    Access-Control-Allow-Headers
+    Access-Control-Allow-Credentials
+
+I would also make it clear that CORS is not authentication or authorization.
+
+Follow-up:
+Would you solve a CORS problem by disabling browser security?
+
+Answer:
+No.
+
+That would hide the problem locally rather than fixing the server's CORS
+configuration.
+
+
+---------------------------------------------------
+
+59. A DEVELOPER STORES A JWT IN LOCALSTORAGE. IS THAT A SECURITY BUG?
+
+Answer:
+Not automatically.
+
+The concern is that any JavaScript running in the application can read
+localStorage.
+
+If the application has XSS:
+
+    localStorage.getItem("token")
+
+could expose the token.
+
+I would evaluate the application's threat model and consider whether a
+protected HttpOnly cookie/session architecture would reduce risk.
+
+I would not simply say "JWT in localStorage is always insecure."
+
+Follow-up:
+What's the biggest tradeoff?
+
+Answer:
+localStorage makes token theft through XSS easier.
+
+HttpOnly cookies reduce direct JavaScript access but introduce the need to
+carefully handle CSRF and cookie configuration.
+
+
+---------------------------------------------------
+
+60. WHAT DOES "NEVER TRUST THE CLIENT" MEAN?
+
+Answer:
+It means anything running in the user's browser can potentially be modified
+or bypassed.
+
+The attacker can change:
+
+- JavaScript
+- localStorage
+- cookies
+- request payloads
+- URL parameters
+- headers
+- frontend state
+- hidden form fields
+- UI restrictions
+
+Therefore the frontend should be treated as an untrusted environment.
+
+The server must enforce:
+
+- Authentication
+- Authorization
+- Input validation
+- Business rules
+- Resource ownership
+- Rate limits
+- Security-sensitive operations
+
+The frontend still has an important role in security, but mostly as defense
+in depth, safe rendering, secure browser configuration, and good user
+experience.
+
+Follow-up:
+Then why should a senior frontend developer care about security?
+
+Answer:
+Because the frontend is directly exposed to the browser's attack surface.
+
+A senior frontend engineer needs to understand XSS, CSRF, CORS, browser
+security, authentication flows, token handling, third-party dependencies,
+Next.js server/client boundaries, and how frontend decisions affect backend
+security.
+
+The key mindset is:
+
+    The frontend can improve security,
+    but it cannot be the final security boundary.

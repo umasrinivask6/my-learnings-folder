@@ -1,0 +1,6 @@
+FROM nginx
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY tls.crt /etc/nginx/tls.crt
+COPY tls.key /etc/nginx/tls.key
+EXPOSE 3050
+

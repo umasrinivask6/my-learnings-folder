@@ -1,0 +1,104 @@
+import logo from './logo.svg';
+import './App.css';
+import { useEffect, useState } from 'react';
+
+export const useUsers = () =>{
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(()=>{
+    const fetchData = async () =>{
+      setIsLoading(true);
+      try{
+        const apiRes = await fetch("https://jsonplaceholder.typicode.com/posts")
+        const resData = await apiRes.json()
+        setData(resData)
+      }
+      catch(e){
+        setError(e.toString())
+      }finally{
+        setIsLoading(false)
+      }
+
+    }
+    fetchData()
+  },[])
+  return { data, error, isLoading }
+}
+
+function App() {
+  const [users, setUsers] = useState(null);
+  const {data, error, isLoading} = useUsers();
+  const [userId, setUserId] = useState(null);
+  const [isEdit, setIsEdit] = useState(false)
+  const [title,setTitle] = useState('')
+
+
+  useEffect(()=>{
+    if(data){
+      setUsers(data)
+    }
+  }, [data])
+
+  if(isLoading){
+    return <div>loading...</div>
+  }
+  if(error){
+    return <div>error</div>
+  }
+
+  const handleDelete = (id) =>{
+    console.log(id)
+    const filteredUsers = users.filter(user=>{
+      return user.id!==id;
+    })
+    setUsers(filteredUsers)
+  }
+
+  const handleAdd = () => {
+    if(userId){
+      setUsers([...users, {id:userId}])
+    }
+  }
+
+  const handleEdit = (id) =>{
+    const updatedUserList = users.map((user)=>{
+      if(userId === id){
+        return {...user, title: title}
+      }
+      return user
+    })
+
+    setUsers(updatedUserList)
+  }
+
+  
+
+  return (
+    <div className="App">
+      <div>
+        <input onChange={(e)=>setUserId(e.target.value)} id="add" value={userId}></input>
+        <label htmlFor="add">userId</label>
+        <button onClick={handleAdd}>add</button>
+      </div>
+      {users?.map(({id, title, body})=>{
+        return (
+          <div style={{display:"flex" , flexDirection: "row", gap: "16px", padding: "48px"}}>
+           <div className='cols'>{id}</div>
+             {isEdit ? <input onChange={(e)=>setTitle(e.target.value)} value={title}></input> :<div className='cols'>{title}</div>}
+            <div className='cols'>{body}</div>
+            <div>
+            <button onClick={()=>handleDelete(id)}>Delete</button>
+            </div>
+            <div>
+            <button onClick={()=>setIsEdit(!isEdit)}>{!isEdit ? "Edit" : "Done"}</button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  );
+}
+
+export default App;

@@ -1,0 +1,86 @@
+<head>
+    <style>      
+        .page-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .horizantal-center {
+            margin: 0;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .vertical-center {
+            margin: 0;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .horizantal-flex-center {
+            display: flex;
+            justify-content: center;
+        }
+        .vertical-flex-center {
+            display: flex;
+            align-items: center;
+            height: 100px;
+        }
+        .flex-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .parent, .row {
+        display: flex;  /* aligns all child elements (flex items) in a row */
+        text-align: center;
+        }
+        .parent .center-align{
+            
+        }
+
+        .col {
+        flex: 1;        /* distributes space on the line equally among items */
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- <div class="horizantal-flex-center">
+        <div>horizantal center of page Through flex center </div>
+    </div>
+    <div class="vertical-flex-center">
+        <div>vertical center of page Through flex center </div>
+    </div>
+    <div class="flex-center">
+        <div>center of page Through flex center </div>
+    </div>
+
+    <div class="horizantal-center">
+        <div>horizantal center of page Through transform and absolute</div>
+    </div>
+    <div class="vertical-center">
+        <div>vertical center of page Through transform and absolute</div>
+    </div>
+    <div class="page-center">
+        <div>center of page Through transform and absolute</div>
+    </div> -->
+
+    <section>
+        <div class="parent">
+          <div class="col"><div class="center-align">Column A</div></div>
+          <div class="col"><div class="center-align">Column B</div></div>
+          <div class="col"><div class="center-align">Column C</div></div>
+        </div>
+        <div class="row">
+          <div class="col">1</div>
+          <div class="col">2</div>
+          <div class="col">3</div>
+        </div>
+      </section>
+</body>

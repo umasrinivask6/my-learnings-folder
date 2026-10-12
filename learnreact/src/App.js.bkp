@@ -1,0 +1,48 @@
+import logo from './logo.svg';
+import './App.css';
+import useUsersData from './hooks/useUsersData';
+import LoginForm from './components/LoginForm';
+import Carousel from './components/carousel/index';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/js/bootstrap.bundle'
+
+
+function App() {
+  const [users, error] = useUsersData("https://jsonplaceholder.typicode.com/users");
+  console.log(users)
+  console.log(JSON.stringify(users))
+  return (
+    <div className="App">
+      {/* <LoginForm /> */}
+      {/* <div className='row'>
+          <div className='name'>
+            <div>Name</div>
+          </div>
+          <div className='mail'>Email ID</div>
+      </div>
+      <div>
+      {
+        users ?
+          users.map(user=>{
+            return(
+              <div className='row'>
+                  <div className='name'>
+                    <div>{user.name}</div>
+                  </div>
+                  <div className='mail'>{user.email}</div>
+              </div>
+            )
+          })
+          :null
+      }
+      </div> */}
+      {/* <Carousel /> */}
+
+    </div>
+  );
+}
+
+export default App;
+
+
+

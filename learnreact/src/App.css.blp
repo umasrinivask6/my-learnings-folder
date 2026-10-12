@@ -1,0 +1,91 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+.row{
+  display: flex;
+  padding-bottom: 10px;
+}
+.row:nth-child(even){
+  background-color: rgb(183, 169, 150);
+}
+.row:nth-child(odd){
+  background-color:rgb(126, 206, 206);
+}
+
+
+
+
+
+.form{
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  display: flex;
+  flex-direction: column;
+  border:2px solid slategray;
+  padding: 10px;
+  width: 500px;
+}
+
+/* .name,
+.mail {
+  flex:1;
+} */
+
+input{
+  margin:1px;
+}
+
+/* .input:hover{
+  outline: 1px solid black;
+} */
+
+input.error {
+  outline: 1px solid red;
+}
+
+.child{
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  margin-bottom: 10px;
+}
